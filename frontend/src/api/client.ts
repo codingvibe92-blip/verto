@@ -6,8 +6,11 @@ export interface ApiErrorBody {
   errors?: { path: string; message: string }[];
 }
 
+const API_ROOT = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const baseURL = API_ROOT ? `${API_ROOT}/api/v1` : '/api/v1';
+
 const client = axios.create({
-  baseURL: '/api/v1',
+  baseURL,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -25,7 +28,7 @@ async function refreshAccess(): Promise<string | null> {
   const refreshToken = localStorage.getItem('crunchx_refresh');
   if (!refreshToken) return null;
   try {
-    const res = await axios.post('/api/v1/auth/refresh', { refreshToken });
+    const res = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
     const tokens = res.data.data;
     localStorage.setItem('crunchx_access', tokens.accessToken);
     localStorage.setItem('crunchx_refresh', tokens.refreshToken);
