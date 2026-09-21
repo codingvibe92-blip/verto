@@ -7,23 +7,14 @@ import { errorHandler, httpLogger, notFound } from './middleware/error';
 
 const app = express();
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 app.use(
   cors({
-    origin(origin, callback) {
-      if (
-        !origin ||
-        env.corsOrigins.includes('*') ||
-        env.corsOrigins.includes(origin) ||
-        origin.includes('vercel.app') ||
-        origin.includes('localhost')
-      ) {
-        callback(null, true);
-      } else {
-        // Fallback: allow request to prevent unexpected CORS blocks
-        callback(null, true);
-      }
-    },
+    origin: true,
     credentials: true,
   })
 );

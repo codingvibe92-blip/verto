@@ -62,7 +62,9 @@ export function apiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const body = err.response?.data as ApiErrorBody | undefined;
     if (body?.message) return body.message;
+    if (err.message) return err.message;
   }
+  if (err instanceof Error) return err.message;
   return 'Something went wrong';
 }
 
