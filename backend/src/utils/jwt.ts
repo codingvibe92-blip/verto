@@ -18,9 +18,10 @@ export function signRefreshToken(userId: number): string {
 
 function parsePayload(raw: string | jwt.JwtPayload): TokenPayload | null {
   if (typeof raw === 'string') return null;
-  if (typeof raw.sub !== 'number' || (raw.type !== 'access' && raw.type !== 'refresh')) return null;
+  const subNum = Number(raw.sub);
+  if (isNaN(subNum) || (raw.type !== 'access' && raw.type !== 'refresh')) return null;
   return {
-    sub: raw.sub,
+    sub: subNum,
     type: raw.type,
     iat: raw.iat ?? 0,
     exp: raw.exp ?? 0,

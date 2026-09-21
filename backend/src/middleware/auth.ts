@@ -20,10 +20,11 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     try {
       const decoded = jwt.verify(token, env.jwt.secret);
       if (typeof decoded === 'string') throw new Error('invalid payload');
-      if (decoded.type !== 'access' || typeof decoded.sub !== 'number') {
+      const sub = Number(decoded.sub);
+      if (decoded.type !== 'access' || isNaN(sub)) {
         throw new Error('invalid token type');
       }
-      payload = { sub: decoded.sub, type: decoded.type, iat: decoded.iat ?? 0, exp: decoded.exp ?? 0 };
+      payload = { sub, type: decoded.type, iat: decoded.iat ?? 0, exp: decoded.exp ?? 0 };
     } catch {
       throw ApiError.unauthorized('Invalid or expired access token');
     }
@@ -53,8 +54,8 @@ export async function authenticateOptional(req: Request, _res: Response, next: N
     if (!token) return next();
 
     const decoded = jwt.verify(token, env.jwt.secret);
-    if (typeof decoded !== 'string' && decoded.type === 'access' && typeof decoded.sub === 'number') {
-      const user = await UserModel.findById(decoded.sub);
+    if (typeof decoded !== 'string' && decoded.type === 'access' && !isNaN(Number(decoded.sub))) {
+      const user = await UserModel.findById(Number(decoded.sub));
       if (user && user.is_active && !user.deleted_at) {
         req.user = {
           id: user.id,
