@@ -1,16 +1,33 @@
 import { useEffect, useState } from 'react';
 import { OrderService, Order } from '../../services/orders';
 import Spinner from '../../components/Spinner';
+import {
+  FiShoppingBag,
+  FiSearch,
+  FiEye,
+  FiUser,
+  FiMapPin,
+} from 'react-icons/fi';
 
-const statusBadges: Record<string, { bg: string; text: string }> = {
-  PENDING_PAYMENT: { bg: 'bg-amber-100', text: 'text-amber-800' },
-  CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-800' },
-  PROCESSING: { bg: 'bg-indigo-100', text: 'text-indigo-800' },
-  SHIPPED: { bg: 'bg-purple-100', text: 'text-purple-800' },
-  DELIVERED: { bg: 'bg-emerald-100', text: 'text-emerald-800' },
-  CANCELLED: { bg: 'bg-red-100', text: 'text-red-800' },
-  REFUNDED: { bg: 'bg-slate-100', text: 'text-slate-700' },
+const statusBadgeClasses: Record<string, string> = {
+  PENDING: 'badge-warning',
+  PENDING_PAYMENT: 'badge-warning',
+  CONFIRMED: 'badge-info',
+  PROCESSING: 'badge-info',
+  SHIPPED: 'badge-info',
+  DELIVERED: 'badge-success',
+  CANCELLED: 'badge-danger',
+  REFUNDED: 'badge-neutral',
 };
+
+const filterTabs = [
+  { key: '', label: 'All Orders' },
+  { key: 'CONFIRMED', label: 'Confirmed' },
+  { key: 'PROCESSING', label: 'Processing' },
+  { key: 'SHIPPED', label: 'Shipped' },
+  { key: 'DELIVERED', label: 'Delivered' },
+  { key: 'CANCELLED', label: 'Cancelled' },
+];
 
 export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -61,7 +78,11 @@ export default function Orders() {
   const handleUpdateStatus = async (newStatus: string) => {
     if (!selectedOrder) return;
     try {
-      const updated = await OrderService.updateStatus(selectedOrder.id, newStatus, `Status updated by Admin to ${newStatus}`);
+      const updated = await OrderService.updateStatus(
+        selectedOrder.id,
+        newStatus,
+        `Status updated by Admin to ${newStatus}`
+      );
       setSelectedOrder(updated);
       load();
     } catch (err) {
@@ -71,143 +92,202 @@ export default function Orders() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Orders & Fulfillment</h1>
-          <p className="text-slate-500 text-sm">
-            Process incoming customer orders, manage picking & packing, and update dispatch status
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-heading">
+              Orders & Fulfillment
+            </h1>
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
+              {orders.length} in view
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Process customer orders, monitor payment verifications, assign dispatch batches, and manage delivery status.
           </p>
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
-        {['', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
-          <button
-            key={st}
-            onClick={() => {
-              setFilterStatus(st);
-              setPage(1);
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              filterStatus === st ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            {st || 'All Orders'}
-          </button>
-        ))}
-      </div>
+      {/* Filter Tabs & Search Card */}
+      <div className="card p-4 space-y-3">
+        {/* Status Tabs */}
+        <div className="flex flex-wrap items-center gap-2">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setFilterStatus(tab.key);
+                setPage(1);
+              }}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                filterStatus === tab.key
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-500/25'
+                  : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      {/* Search */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="flex gap-2 max-w-md">
-          <input
-            type="text"
-            placeholder="Search by Order #, Customer, or Email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <button type="submit" className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">
+        {/* Search */}
+        <form onSubmit={handleSearchSubmit} className="flex gap-2 max-w-md pt-1">
+          <div className="relative flex-1">
+            <FiSearch className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by Order #, Customer, or Email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input pl-9.5 py-2 text-xs"
+            />
+          </div>
+          <button type="submit" className="btn-secondary btn-sm">
             Search
           </button>
         </form>
       </div>
 
-      {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>}
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-rose-700 font-bold">
+            ✕
+          </button>
+        </div>
+      )}
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 flex justify-center">
-            <Spinner />
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="p-12 text-center text-slate-500">No customer orders in this view.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-700">
-              <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
-                <tr>
-                  <th className="px-6 py-3">Order Number</th>
-                  <th className="px-6 py-3">Customer</th>
-                  <th className="px-6 py-3">Total Amount</th>
-                  <th className="px-6 py-3">Payment</th>
-                  <th className="px-6 py-3">Fulfillment Status</th>
-                  <th className="px-6 py-3">Order Date</th>
-                  <th className="px-6 py-3 text-right">Actions</th>
+      {/* Orders Table Card */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr>
+                <th className="th">Order #</th>
+                <th className="th">Customer</th>
+                <th className="th">Total Amount</th>
+                <th className="th">Payment Status</th>
+                <th className="th">Fulfillment Status</th>
+                <th className="th">Order Date</th>
+                <th className="th text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {orders.map((o) => (
+                <tr key={o.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="td">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <FiShoppingBag className="h-4 w-4" />
+                      </div>
+                      <span className="font-mono font-bold text-slate-900">{o.order_number}</span>
+                    </div>
+                  </td>
+                  <td className="td">
+                    <div className="font-semibold text-slate-900">
+                      {o.customer_name || 'Guest Customer'}
+                    </div>
+                    <div className="text-[11px] text-slate-400">{o.customer_email}</div>
+                  </td>
+                  <td className="td font-bold text-slate-900">
+                    ₹{Number(o.grand_total || 0).toLocaleString('en-IN')}
+                  </td>
+                  <td className="td">
+                    <span
+                      className={`badge ${
+                        o.payment_status === 'PAID'
+                          ? 'badge-success'
+                          : o.payment_status === 'FAILED'
+                          ? 'badge-danger'
+                          : 'badge-warning'
+                      }`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      <span>{o.payment_status}</span>
+                    </span>
+                  </td>
+                  <td className="td">
+                    <span className={`badge ${statusBadgeClasses[o.status] || 'badge-neutral'}`}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      <span>{o.status}</span>
+                    </span>
+                  </td>
+                  <td className="td text-slate-500 text-xs">
+                    {new Date(o.created_at).toLocaleDateString('en-IN', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </td>
+                  <td className="td text-right">
+                    <button
+                      onClick={() => handleViewDetails(o.id)}
+                      className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+                    >
+                      <FiEye className="h-3.5 w-3.5" />
+                      <span>Details</span>
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {orders.map((o) => {
-                  const badge = statusBadges[o.status] || { bg: 'bg-slate-100', text: 'text-slate-700' };
-
-                  return (
-                    <tr key={o.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-slate-900">{o.order_number}</td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900">{o.customer_name || 'Guest Customer'}</div>
-                        <div className="text-xs text-slate-500">{o.customer_email}</div>
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-900 font-mono">
-                        ${Number(o.grand_total).toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-md ${o.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                          {o.payment_status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${badge.bg} ${badge.text}`}>
-                          {o.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {new Date(o.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleViewDetails(o.id)}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
-                        >
-                          View Details
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              ))}
+              {!loading && orders.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="td py-12 text-center text-slate-400">
+                    <FiShoppingBag className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                    <p className="text-sm font-medium">No orders found</p>
+                    <p className="text-xs mt-0.5">Try selecting a different status filter or search query.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {loading && (
+          <div className="py-8">
+            <Spinner />
           </div>
         )}
       </div>
 
       {/* Order Detail Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl space-y-5 my-8">
-            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200">
+            {/* Modal Header */}
+            <div className="flex justify-between items-start border-b border-slate-100 pb-4">
               <div>
-                <span className="text-xs font-mono font-bold text-slate-500">ORDER DETAILS</span>
-                <h2 className="text-xl font-bold text-slate-900">{selectedOrder.order_number}</h2>
-                <span className="text-xs text-slate-500">Placed on {new Date(selectedOrder.created_at).toLocaleString()}</span>
+                <span className="inline-block rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-bold text-blue-700">
+                  ORDER DETAILS
+                </span>
+                <h2 className="text-xl font-bold text-slate-900 font-heading mt-1">
+                  {selectedOrder.order_number}
+                </h2>
+                <span className="text-xs text-slate-500">
+                  Placed on {new Date(selectedOrder.created_at).toLocaleString()}
+                </span>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-slate-600 font-bold text-lg">
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              >
                 ✕
               </button>
             </div>
 
-            {/* Quick Status Bar */}
-            <div className="flex flex-wrap gap-2 items-center justify-between bg-slate-50 p-3 rounded-xl">
+            {/* Quick Status Action Bar */}
+            <div className="flex flex-wrap gap-3 items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div>
-                <span className="text-xs text-slate-500 block">Current Status:</span>
-                <span className="text-sm font-bold text-slate-800">{selectedOrder.status}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
+                  Current Status
+                </span>
+                <span className="text-sm font-bold text-slate-900">{selectedOrder.status}</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {selectedOrder.status === 'CONFIRMED' && (
                   <button
                     onClick={() => handleUpdateStatus('PROCESSING')}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold"
+                    className="btn-primary btn-sm"
                   >
                     Pack Order (Processing)
                   </button>
@@ -215,7 +295,7 @@ export default function Orders() {
                 {selectedOrder.status === 'PROCESSING' && (
                   <button
                     onClick={() => handleUpdateStatus('SHIPPED')}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold"
+                    className="btn-primary btn-sm"
                   >
                     Dispatch / Shipped
                   </button>
@@ -223,7 +303,7 @@ export default function Orders() {
                 {selectedOrder.status === 'SHIPPED' && (
                   <button
                     onClick={() => handleUpdateStatus('DELIVERED')}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold"
+                    className="btn-success btn-sm"
                   >
                     Confirm Delivered
                   </button>
@@ -235,7 +315,7 @@ export default function Orders() {
                         handleUpdateStatus('CANCELLED');
                       }
                     }}
-                    className="px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg text-xs font-semibold"
+                    className="btn-danger btn-sm"
                   >
                     Cancel Order
                   </button>
@@ -243,99 +323,45 @@ export default function Orders() {
               </div>
             </div>
 
-            {/* Customer & Shipping Address */}
+            {/* Customer & Address Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl space-y-1">
-                <span className="font-bold text-slate-700 uppercase">Customer Information</span>
-                <div className="font-semibold text-slate-900">{selectedOrder.customer_name}</div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-slate-700 uppercase">
+                  <FiUser className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Customer Info</span>
+                </div>
+                <div className="font-semibold text-slate-900 text-sm">
+                  {selectedOrder.customer_name}
+                </div>
                 <div className="text-slate-600">{selectedOrder.customer_email}</div>
-                <div className="text-slate-600">{selectedOrder.customer_phone}</div>
-              </div>
-              <div className="bg-slate-50 p-3 rounded-xl space-y-1">
-                <span className="font-bold text-slate-700 uppercase">Shipping Destination</span>
-                {selectedOrder.shipping_address ? (
-                  <>
-                    <div className="text-slate-800">{selectedOrder.shipping_address.address_line1}</div>
-                    <div className="text-slate-800">
-                      {selectedOrder.shipping_address.city}, {selectedOrder.shipping_address.state} {selectedOrder.shipping_address.postal_code}
-                    </div>
-                    <div className="text-slate-500">{selectedOrder.shipping_address.country}</div>
-                  </>
-                ) : (
-                  <div className="text-slate-500">Standard delivery address</div>
+                {selectedOrder.customer_phone && (
+                  <div className="text-slate-600">{selectedOrder.customer_phone}</div>
                 )}
               </div>
-            </div>
 
-            {/* Items */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-700 uppercase">Purchased Items</h3>
-              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-                {selectedOrder.items?.map((it) => (
-                  <div key={it.id} className="p-3 flex justify-between items-center text-xs">
-                    <div>
-                      <div className="font-bold text-slate-900">{it.product_name}</div>
-                      <div className="text-slate-500 font-mono">SKU: {it.sku || '—'}</div>
-                      <div className="text-slate-500">${Number(it.unit_price).toFixed(2)} × {it.quantity}</div>
-                    </div>
-                    <div className="font-mono font-bold text-slate-900 text-sm">
-                      ${Number(it.line_total).toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Financial Totals */}
-            <div className="bg-slate-50 p-3.5 rounded-xl space-y-1.5 text-xs text-slate-700">
-              <div className="flex justify-between">
-                <span>Items Subtotal:</span>
-                <span className="font-mono">${Number(selectedOrder.items_total).toFixed(2)}</span>
-              </div>
-              {Number(selectedOrder.discount_amount) > 0 && (
-                <div className="flex justify-between text-emerald-600 font-semibold">
-                  <span>Coupon Discount ({selectedOrder.coupon_code}):</span>
-                  <span className="font-mono">-${Number(selectedOrder.discount_amount).toFixed(2)}</span>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-slate-700 uppercase">
+                  <FiMapPin className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Delivery Address</span>
                 </div>
-              )}
-              <div className="flex justify-between">
-                <span>Sales Tax (5%):</span>
-                <span className="font-mono">${Number(selectedOrder.tax_amount).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Shipping:</span>
-                <span className="font-mono">${Number(selectedOrder.shipping_amount).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-bold text-slate-900 border-t border-slate-200 pt-2">
-                <span>Grand Total:</span>
-                <span className="font-mono">${Number(selectedOrder.grand_total).toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Status History Timeline */}
-            {selectedOrder.history && selectedOrder.history.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-slate-700 uppercase">Timeline</h3>
-                <div className="space-y-1 max-h-32 overflow-y-auto text-xs text-slate-600">
-                  {selectedOrder.history.map((h, i) => (
-                    <div key={i} className="flex justify-between py-1 border-b border-slate-100">
-                      <span>
-                        Advanced to <strong className="text-slate-800">{h.to_status}</strong> {h.reason ? `(${h.reason})` : ''}
-                      </span>
-                      <span className="text-slate-400">{new Date(h.created_at).toLocaleTimeString()}</span>
-                    </div>
-                  ))}
+                <div className="text-slate-700 leading-relaxed">
+                  {selectedOrder.shipping_address?.address_line1 || 'Standard Delivery Address'}
+                  {selectedOrder.shipping_address?.city && `, ${selectedOrder.shipping_address.city}`}
+                  {selectedOrder.shipping_address?.state && `, ${selectedOrder.shipping_address.state}`}
+                  {selectedOrder.shipping_address?.postal_code && ` - ${selectedOrder.shipping_address.postal_code}`}
                 </div>
               </div>
-            )}
+            </div>
 
-            <div className="flex justify-end pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium"
-              >
-                Close
-              </button>
+            {/* Total Amount Summary */}
+            <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
+              <div className="text-xs text-slate-500">Payment: {selectedOrder.payment_status}</div>
+              <div className="text-right">
+                <div className="text-xs text-slate-500">Total Order Value</div>
+                <div className="text-2xl font-bold text-slate-900 font-heading">
+                  ₹{Number(selectedOrder.grand_total || 0).toLocaleString('en-IN')}
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -2,13 +2,26 @@ import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { CatalogService, Category, Subcategory } from '../../services/catalog';
 import Spinner from '../../components/Spinner';
+import {
+  FiEdit2,
+  FiTrash2,
+  FiChevronRight,
+  FiFolder,
+  FiFolderPlus,
+  FiAlertCircle,
+} from 'react-icons/fi';
 
 export default function Categories() {
   const [rows, setRows] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Category | null>(null);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<{ name: string; status: string }>();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<{ name: string; status: string }>();
 
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [subs, setSubs] = useState<Subcategory[]>([]);
@@ -23,12 +36,15 @@ export default function Categories() {
     try {
       const data = await CatalogService.listCategories({ limit: 100 });
       setRows(data.rows);
+      if (data.rows.length > 0 && !activeCategory) {
+        selectCategory(data.rows[0]);
+      }
     } catch (err) {
       setError(CatalogService.errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeCategory]);
 
   const loadSubs = useCallback(async (categoryId: number) => {
     setSubsLoading(true);
@@ -54,11 +70,6 @@ export default function Categories() {
     loadSubs(c.id);
   };
 
-  const startEdit = (c: Category) => {
-    setEditing(c);
-    reset({ name: c.name, status: c.status });
-  };
-
   const onSubmit = async (values: { name: string; status: string }) => {
     setError('');
     try {
@@ -70,14 +81,18 @@ export default function Categories() {
       setEditing(null);
       reset({ name: '', status: 'ACTIVE' });
       await load();
-      if (activeCategory) await loadSubs(activeCategory.id);
     } catch (err) {
       setError(CatalogService.errorMessage(err));
     }
   };
 
+  const startEdit = (c: Category) => {
+    setEditing(c);
+    reset({ name: c.name, status: c.status });
+  };
+
   const remove = async (c: Category) => {
-    if (!window.confirm(`Delete "${c.name}"?`)) return;
+    if (!window.confirm(`Delete category "${c.name}" and associated classifications?`)) return;
     try {
       await CatalogService.deleteCategory(c.id);
       if (activeCategory?.id === c.id) {
@@ -95,7 +110,7 @@ export default function Categories() {
     setSubsError('');
     try {
       if (editingSub) {
-        await CatalogService.updateSubcategory(editingSub.id, { ...values, category_id: activeCategory.id });
+        await CatalogService.updateSubcategory(editingSub.id, values);
       } else {
         await CatalogService.createSubcategory({ category_id: activeCategory.id, ...values });
       }
@@ -123,36 +138,80 @@ export default function Categories() {
   };
 
   return (
-    <div>
-      <h1 className="mb-6 text-xl font-semibold">Categories &amp; Subcategories</h1>
+    <div className="space-y-6">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-heading">
+              Categories & Taxonomies
+            </h1>
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
+              {rows.length} categories
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Structure your storefront navigation hierarchy, departmental groupings, and catalog filters.
+          </p>
+        </div>
+      </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FiAlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button onClick={() => setError('')} className="text-rose-700 font-bold">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* 2-Column Responsive Layout */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Left Column: Categories List & Create/Edit Form */}
         <div className="space-y-6">
-          <div className="card p-4">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">
-              {editing ? `Edit: ${editing.name}` : 'New category'}
-            </h2>
-            {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          {/* Create/Edit Category Form */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+              <FiFolderPlus className="h-4 w-4 text-blue-600" />
+              <h2 className="text-sm font-bold text-slate-900 font-heading">
+                {editing ? `Edit Category: ${editing.name}` : 'Create Category'}
+              </h2>
+            </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="label">Name</label>
-                <input className="input" {...register('name', { required: 'Name is required' })} />
-                {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
+                <label className="label">Category Name</label>
+                <input
+                  className="input"
+                  placeholder="e.g. Health & Wellness"
+                  {...register('name', { required: 'Name is required' })}
+                />
+                {errors.name && <p className="mt-1 text-xs text-rose-600">{errors.name.message}</p>}
               </div>
+
               <div>
-                <label className="label">Status</label>
-                <select className="input" {...register('status')}>
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="INACTIVE">INACTIVE</option>
+                <label className="label">Display Status</label>
+                <select className="input cursor-pointer" {...register('status')}>
+                  <option value="ACTIVE">ACTIVE (Published on Storefront)</option>
+                  <option value="INACTIVE">INACTIVE (Hidden)</option>
                 </select>
               </div>
-              <div className="flex gap-2">
-                <button type="submit" className="btn-primary">{editing ? 'Save' : 'Create'}</button>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button type="submit" className="btn-primary btn-sm">
+                  {editing ? 'Save Category' : '+ Add Category'}
+                </button>
                 {editing && (
                   <button
                     type="button"
-                    className="btn-secondary"
-                    onClick={() => { setEditing(null); reset({ name: '', status: 'ACTIVE' }); }}
+                    className="btn-secondary btn-sm"
+                    onClick={() => {
+                      setEditing(null);
+                      reset({ name: '', status: 'ACTIVE' });
+                    }}
                   >
                     Cancel
                   </button>
@@ -161,83 +220,153 @@ export default function Categories() {
             </form>
           </div>
 
+          {/* Categories Table Card */}
           <div className="card overflow-hidden">
-            <table className="w-full">
-              <thead className="border-b border-slate-200 bg-slate-50">
-                <tr>
-                  <th className="th">Name</th>
-                  <th className="th">Slug</th>
-                  <th className="th">Status</th>
-                  <th className="th">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rows.map((c) => (
-                  <tr key={c.id} className={activeCategory?.id === c.id ? 'bg-brand-50' : ''}>
-                    <td className="td font-medium text-slate-800">
-                      <button className="hover:underline" onClick={() => selectCategory(c)}>{c.name}</button>
-                    </td>
-                    <td className="td text-slate-500">{c.slug}</td>
-                    <td className="td">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="td">
-                      <div className="flex gap-2">
-                        <button className="text-sm text-brand-600 hover:underline" onClick={() => startEdit(c)}>Edit</button>
-                        <button className="text-sm text-red-600 hover:underline" onClick={() => remove(c)}>Delete</button>
-                      </div>
-                    </td>
+            <div className="border-b border-slate-100 px-5 py-3.5 bg-slate-50/50 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Primary Categories ({rows.length})
+              </span>
+              <span className="text-[11px] text-slate-400">Select to view subcategories</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr>
+                    <th className="th">Category Name</th>
+                    <th className="th">Slug</th>
+                    <th className="th">Status</th>
+                    <th className="th text-right">Actions</th>
                   </tr>
-                ))}
-                {!loading && rows.length === 0 && (
-                  <tr><td colSpan={4} className="td py-10 text-center text-slate-400">No categories</td></tr>
-                )}
-              </tbody>
-            </table>
-            {loading && <Spinner />}
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rows.map((c) => {
+                    const isSelected = activeCategory?.id === c.id;
+                    return (
+                      <tr
+                        key={c.id}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected ? 'bg-blue-50/70' : 'hover:bg-slate-50/70'
+                        }`}
+                        onClick={() => selectCategory(c)}
+                      >
+                        <td className="td font-semibold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <FiFolder className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
+                            <span>{c.name}</span>
+                            {isSelected && <FiChevronRight className="h-3.5 w-3.5 text-blue-600 ml-auto" />}
+                          </div>
+                        </td>
+                        <td className="td text-xs font-mono text-slate-500">{c.slug}</td>
+                        <td className="td">
+                          <span
+                            className={`badge ${
+                              c.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'
+                            }`}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            <span>{c.status}</span>
+                          </span>
+                        </td>
+                        <td className="td text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={() => startEdit(c)}
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              title="Edit Category"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => remove(c)}
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                              title="Delete Category"
+                            >
+                              <FiTrash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!loading && rows.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="td py-10 text-center text-slate-400">
+                        No categories found. Create one above to organize products.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {loading && (
+              <div className="py-6">
+                <Spinner />
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="card p-4">
-          <h2 className="mb-1 text-sm font-semibold text-slate-700">
-            {activeCategory ? `Subcategories of ${activeCategory.name}` : 'Subcategories'}
-          </h2>
-          <p className="mb-3 text-xs text-slate-400">
-            {activeCategory ? 'Add, edit or remove subcategories below.' : 'Click a category name to manage its subcategories.'}
-          </p>
+        {/* Right Column: Subcategories Master Panel */}
+        <div className="card p-5 space-y-5">
+          <div className="border-b border-slate-100 pb-3">
+            <h2 className="text-base font-bold text-slate-900 font-heading">
+              {activeCategory ? `Subcategories of "${activeCategory.name}"` : 'Subcategories'}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {activeCategory
+                ? 'Granular product types and taxonomy filters for this category.'
+                : 'Click any category on the left to inspect and create its subcategories.'}
+            </p>
+          </div>
 
-          {subsError && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{subsError}</div>}
+          {subsError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+              {subsError}
+            </div>
+          )}
 
           {activeCategory && (
-            <>
-              <form onSubmit={subForm.handleSubmit(onSubSubmit)} className="mb-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="label">Name</label>
-                  <input
-                    className="input"
-                    {...subForm.register('name', { required: 'Name is required' })}
-                    placeholder={editingSub ? '' : 'e.g. Chips & Crisps'}
-                  />
-                  {subForm.formState.errors.name && (
-                    <p className="mt-1 text-xs text-red-600">{subForm.formState.errors.name.message}</p>
-                  )}
+            <div className="space-y-5">
+              {/* Add / Edit Subcategory Form */}
+              <form onSubmit={subForm.handleSubmit(onSubSubmit)} className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  {editingSub ? `Edit Subcategory: ${editingSub.name}` : '+ Add New Subcategory'}
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="label">Subcategory Name</label>
+                    <input
+                      className="input"
+                      placeholder="e.g. Roasted Chips"
+                      {...subForm.register('name', { required: 'Name is required' })}
+                    />
+                    {subForm.formState.errors.name && (
+                      <p className="mt-1 text-xs text-rose-600">
+                        {subForm.formState.errors.name.message}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="label">Status</label>
+                    <select className="input cursor-pointer" {...subForm.register('status')}>
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="label">Status</label>
-                  <select className="input" {...subForm.register('status')}>
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="INACTIVE">INACTIVE</option>
-                  </select>
-                </div>
-                <div className="flex gap-2 sm:col-span-2">
-                  <button type="submit" className="btn-primary">{editingSub ? 'Save Subcategory' : '+ Add Subcategory'}</button>
+                <div className="flex items-center gap-2 pt-1">
+                  <button type="submit" className="btn-primary btn-sm">
+                    {editingSub ? 'Save Subcategory' : 'Add Subcategory'}
+                  </button>
                   {editingSub && (
                     <button
                       type="button"
-                      className="btn-secondary"
-                      onClick={() => { setEditingSub(null); subForm.reset({ name: '', status: 'ACTIVE' }); }}
+                      className="btn-secondary btn-sm"
+                      onClick={() => {
+                        setEditingSub(null);
+                        subForm.reset({ name: '', status: 'ACTIVE' });
+                      }}
                     >
                       Cancel
                     </button>
@@ -245,42 +374,68 @@ export default function Categories() {
                 </div>
               </form>
 
-              <div className="overflow-hidden rounded-lg border border-slate-200">
-                <table className="w-full">
-                  <thead className="border-b border-slate-200 bg-slate-50">
+              {/* Subcategories Table */}
+              <div className="overflow-hidden rounded-2xl border border-slate-200">
+                <table className="w-full text-left">
+                  <thead>
                     <tr>
-                      <th className="th">Name</th>
+                      <th className="th">Subcategory Name</th>
                       <th className="th">Slug</th>
                       <th className="th">Status</th>
-                      <th className="th">Actions</th>
+                      <th className="th text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {subs.map((s) => (
-                      <tr key={s.id}>
+                      <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="td font-medium text-slate-800">{s.name}</td>
-                        <td className="td text-slate-500">{s.slug}</td>
+                        <td className="td text-xs font-mono text-slate-500">{s.slug}</td>
                         <td className="td">
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${s.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {s.status}
+                          <span
+                            className={`badge ${
+                              s.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'
+                            }`}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            <span>{s.status}</span>
                           </span>
                         </td>
-                        <td className="td">
-                          <div className="flex gap-2">
-                            <button className="text-sm text-brand-600 hover:underline" onClick={() => startEditSub(s)}>Edit</button>
-                            <button className="text-sm text-red-600 hover:underline" onClick={() => removeSub(s)}>Delete</button>
+                        <td className="td text-right">
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={() => startEditSub(s)}
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              title="Edit Subcategory"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => removeSub(s)}
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                              title="Delete Subcategory"
+                            >
+                              <FiTrash2 className="h-4 w-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
                     ))}
                     {!subsLoading && subs.length === 0 && (
-                      <tr><td colSpan={4} className="td py-8 text-center text-slate-400">No subcategories</td></tr>
+                      <tr>
+                        <td colSpan={4} className="td py-8 text-center text-slate-400">
+                          No subcategories under "{activeCategory.name}". Add one above.
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
-                {subsLoading && <Spinner />}
+                {subsLoading && (
+                  <div className="py-6">
+                    <Spinner />
+                  </div>
+                )}
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
