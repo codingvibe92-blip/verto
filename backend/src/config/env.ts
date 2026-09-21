@@ -24,8 +24,8 @@ export const env = {
   },
 
   jwt: {
-    secret: required('JWT_SECRET'),
-    refreshSecret: required('JWT_REFRESH_SECRET'),
+    secret: process.env.JWT_SECRET || 'crunchx-secret-key-production-change-in-env',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || 'crunchx-refresh-secret-key-production',
     expiresIn: process.env.JWT_EXPIRES_IN ?? '30m',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   },

@@ -7,23 +7,32 @@ export type SqlParams = any[];
 
 export const isPostgres =
   env.db.port === 5432 ||
+  env.db.port === 6543 ||
   env.db.host.includes('supabase') ||
-  (process.env.DATABASE_URL?.startsWith('postgres') ?? false);
+  env.db.host.includes('pooler') ||
+  Boolean(process.env.DATABASE_URL?.startsWith('postgres'));
 
 export let mysqlPool: mysql.Pool | null = null;
 export let pgPool: PgPool | null = null;
 
 if (isPostgres) {
   logger.info(`Initializing PostgreSQL connection pool for ${env.db.host}:${env.db.port}`);
-  pgPool = new PgPool({
-    host: env.db.host,
-    port: env.db.port,
-    user: env.db.user,
-    password: env.db.password,
-    database: env.db.database,
-    ssl: env.db.host !== '127.0.0.1' && env.db.host !== 'localhost' ? { rejectUnauthorized: false } : undefined,
-    max: 10,
-  });
+  const poolConfig = process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        max: 10,
+      }
+    : {
+        host: env.db.host,
+        port: env.db.port,
+        user: env.db.user,
+        password: env.db.password,
+        database: env.db.database,
+        ssl: env.db.host !== '127.0.0.1' && env.db.host !== 'localhost' ? { rejectUnauthorized: false } : undefined,
+        max: 10,
+      };
+  pgPool = new PgPool(poolConfig);
 } else {
   logger.info(`Initializing MySQL connection pool for ${env.db.host}:${env.db.port}`);
   mysqlPool = mysql.createPool({
