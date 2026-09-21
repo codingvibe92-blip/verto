@@ -13,8 +13,8 @@ import { AuthUserDto } from '../services/types';
 interface AuthContextValue {
   user: AuthUserDto | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUserDto>;
+  register: (name: string, email: string, password: string, phone?: string) => Promise<AuthUserDto>;
   logout: () => void;
   hasPermission: (permission: string) => boolean;
 }
@@ -42,17 +42,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const { tokens, user: u } = await AuthService.login({ email, password });
-    localStorage.setItem('crunchx_access', tokens.accessToken);
-    localStorage.setItem('crunchx_refresh', tokens.refreshToken);
+    if (tokens?.accessToken) {
+      localStorage.setItem('crunchx_access', tokens.accessToken);
+    }
+    if (tokens?.refreshToken) {
+      localStorage.setItem('crunchx_refresh', tokens.refreshToken);
+    }
     setUser(u);
+    return u;
   }, []);
 
   const register = useCallback(
     async (name: string, email: string, password: string, phone?: string) => {
       const { tokens, user: u } = await AuthService.register({ name, email, password, phone });
-      localStorage.setItem('crunchx_access', tokens.accessToken);
-      localStorage.setItem('crunchx_refresh', tokens.refreshToken);
+      if (tokens?.accessToken) {
+        localStorage.setItem('crunchx_access', tokens.accessToken);
+      }
+      if (tokens?.refreshToken) {
+        localStorage.setItem('crunchx_refresh', tokens.refreshToken);
+      }
       setUser(u);
+      return u;
     },
     []
   );

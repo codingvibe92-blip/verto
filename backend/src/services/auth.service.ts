@@ -70,10 +70,16 @@ export const AuthService = {
     };
   },
 
-  buildAuthResult(user: UserWithAccess): AuthResult {
+  buildAuthResult(user: UserWithAccess): any {
+    const accessToken = signAccessToken(user.id);
+    const refreshToken = signRefreshToken(user.id);
     return {
-      accessToken: signAccessToken(user.id),
-      refreshToken: signRefreshToken(user.id),
+      accessToken,
+      refreshToken,
+      tokens: {
+        accessToken,
+        refreshToken,
+      },
       user: {
         id: user.id,
         name: user.name,

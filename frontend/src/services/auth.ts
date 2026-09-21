@@ -9,17 +9,27 @@ import {
 export const AuthService = {
   async login(payload: LoginPayload): Promise<{ tokens: AuthTokens; user: AuthUserDto }> {
     const res = await client.post('/auth/login', payload);
-    return res.data.data;
+    const data = res.data?.data ?? res.data ?? {};
+    const tokens: AuthTokens = data.tokens ?? {
+      accessToken: data.accessToken ?? '',
+      refreshToken: data.refreshToken ?? '',
+    };
+    return { tokens, user: data.user };
   },
 
   async register(payload: RegisterPayload): Promise<{ tokens: AuthTokens; user: AuthUserDto }> {
     const res = await client.post('/auth/register', payload);
-    return res.data.data;
+    const data = res.data?.data ?? res.data ?? {};
+    const tokens: AuthTokens = data.tokens ?? {
+      accessToken: data.accessToken ?? '',
+      refreshToken: data.refreshToken ?? '',
+    };
+    return { tokens, user: data.user };
   },
 
   async me(): Promise<AuthUserDto> {
     const res = await client.get('/auth/me');
-    return res.data.data;
+    return res.data?.data ?? res.data;
   },
 
   errorMessage(err: unknown): string {

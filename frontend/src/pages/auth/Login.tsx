@@ -21,9 +21,16 @@ export default function Login() {
     setSubmitting(true);
     setError('');
     try {
-      await login(values.email, values.password);
+      const u = await login(values.email, values.password);
       const redirect = params.get('redirect');
-      navigate(redirect && redirect.startsWith('/') ? redirect : '/', { replace: true });
+      if (redirect && redirect.startsWith('/')) {
+        navigate(redirect, { replace: true });
+      } else {
+        const isAdmin = u?.roles?.some((r) =>
+          ['super-admin', 'admin', 'employee', 'inventory-manager', 'production-manager', 'quality-inspector'].includes(r.slug)
+        );
+        navigate(isAdmin ? '/admin' : '/', { replace: true });
+      }
     } catch (err) {
       setError(AuthService.errorMessage(err));
     } finally {
